@@ -18,7 +18,7 @@ def joinKV(keys, values):
 
 ####################################################
 # 建立数据库连接
-def getConn(dbname="scoredb"):
+def getConn(dbname):
     import ConfigParser
     cf = ConfigParser.ConfigParser()
     cf.read("../conf/db.conf")
@@ -83,7 +83,7 @@ def sqlExecute(sql, conn=None):
 
 ####################################################
 # 写mysql，更新已存在的记录
-def updateRecord(measures, dimensions, table="scores", conn=None):
+def updateRecord(measures, dimensions, table, conn=None):
     curTime = "%s" % datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     measures['modify_time'] = curTime
 
@@ -101,7 +101,7 @@ def updateRecord(measures, dimensions, table="scores", conn=None):
 
 ####################################################
 # 写mysql，插入新记录
-def insertRecord(measures, dimensions, table="scores", conn=None):
+def insertRecord(measures, dimensions, table, conn=None):
     curTime = "%s" % datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     measures['create_time'] = curTime
     measures['modify_time'] = curTime
@@ -119,7 +119,7 @@ def insertRecord(measures, dimensions, table="scores", conn=None):
 
 ####################################################
 # 读mysql，查询记录
-def getRecord(dimensions, table="scores", conn=None):
+def getRecord(dimensions, table, conn=None):
     _dimensions = joinKV(dimensions.keys(), transV(dimensions.values()))
     _dimensions = u"WHERE %s" % " AND ".join(_dimensions)
 
@@ -131,7 +131,7 @@ def getRecord(dimensions, table="scores", conn=None):
 
 ####################################################
 # 写mysql，更新已存在的记录或者插入新记录
-def loadRecord(measures, dimensions, table="scores", conn=None):
+def loadRecord(measures, dimensions, table, conn=None):
     #print "][", measures, dimensions, table, conn
     if getRecord(dimensions, table, conn=conn):
         updateRecord(measures, dimensions, table, conn=conn)
@@ -140,7 +140,7 @@ def loadRecord(measures, dimensions, table="scores", conn=None):
 
 ####################################################
 # 写mysql，更新已存在的记录或者插入新记录
-def getRecordId(dimensions, table="scores", conn=None):
+def getRecordId(dimensions, table, conn=None):
 
     _dimensions = joinKV(dimensions.keys(), transV(dimensions.values()))
     _dimensions = u"WHERE %s" % " AND ".join(_dimensions)

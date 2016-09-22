@@ -116,7 +116,7 @@ class Controler():
         else:
             print 'error'
 
-        fddone = open(self._output_path + '.done','w')
+        fddone = open(path_file + '.done','w')
         if fddone:
             fddone.close()
         else:
@@ -141,5 +141,5 @@ class Controler():
 
 if "__main__" == __name__:
     controler = Controler()
-    #controler.get_start_seeds()
-    controler.get_db_seeds()
+    controler.get_start_seeds()
+    #controler.get_db_seeds()
