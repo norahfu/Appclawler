@@ -1,8 +1,10 @@
+#!/usr/bin/env python
+#coding=utf-8
 __author__ = 'Norah'
 import lxml
 import re
 import lxml.html
-
+from lxml import html
 
 class XPath:
 
@@ -28,7 +30,7 @@ class XPath:
 
 
 
-class parser:
+class MyappParser:
 
     def parse_app_data(self, html):
         """
@@ -121,4 +123,20 @@ class parser:
             # Distinct elements found
             seen = set()
             return [x for x in node if x not in seen and not seen.add(x)]
+
+    def extract_search_url(self,page):
+        xpath ="//div[@class='icon-margin']/a[@class='icon' and \
+                @target='_blank']"
+        tree = html.fromstring(page)
+        urls = tree.xpath(xpath)
+        if urls is None or len(urls) == 0:
+            yield None
+
+        # Go on each node looking for urls
+        url_prefix = 'http://sj.qq.com/myapp/'
+        for node in urls:
+            if "href" in node.attrib and "detail.htm?apkName=" in node.attrib["href"]:
+                url = node.attrib["href"]
+                yield "{0}{1}".format(url_prefix, url.lstrip("../myapp"))
+
 

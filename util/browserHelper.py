@@ -1,11 +1,13 @@
+#!/usr/bin/env python
+#coding=utf-8
 __author__ = 'Norah'
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 import time
 
-#Ä£Äâä¯ÀÀÆ÷¹ö¶¯²Ù×÷
-def scroll(self,driver):
+#simulate browser scroll
+def scroll(driver):
     driver.execute_script("""
         (function () {
             var y = document.body.scrollTop;
@@ -26,7 +28,7 @@ def scroll(self,driver):
             setTimeout(f, 1000);
         })();
         """)
-#¹ö¶¯Ò³ÃæloadËùÓĞÄÚÈİ£¬ÊÊÓÃÓÚÓ¦ÓÃ±¦myappÓ¦ÓÃÊĞ³¡
+#loal all page content, used for myapps
 def load_page(url):
     service_args = [
             '--load-images=no'
@@ -50,7 +52,7 @@ def load_page(url):
             scroll(browser)
             time.sleep(1)
             timecount += 1
-            ec = EC.text_to_be_present_in_element((By.CLASS_NAME, 'load-more-btn'), u'Ã»ÓĞ¸ü¶àÁË')
+            ec = EC.text_to_be_present_in_element((By.CLASS_NAME, 'load-more-btn'), u'æ²¡æœ‰æ›´å¤šäº†')
             if ec.__call__(browser):
                 break
             else:
