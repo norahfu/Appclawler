@@ -4,7 +4,7 @@ __author__ = 'Norah'
 import sys, os
 import time
 import codecs
-
+from extractor.myappParser import MyappParser
 reload(sys)
 sys.setdefaultencoding('utf-8')
 sys.path.append(u'..')
@@ -52,14 +52,40 @@ class fetcher:
                 self.logger.debug(u"Fetch failed with status code: {}".format(response.status_code))
                 return False
 
-            #:TODO 根据不同的parser解析
+
+            app,sublink = self.fetch_myapp_app(response)
+            app_data= {}
+            for key in app.keys():
+                app_data[key] = app[key] or u''
+            #app_data = [data or u'' for data in app]
+            ####:TODO'
+            dimensions = {"url": url.strip(), "domain": suburl_filter}
+            conn = getConn("taierdb")
+            table = "app_Info"
+            insertRecord(app_data, dimensions, table, conn=conn)
+            conn.close()
+            self.store_suburls(sublink,url,suburl_filter)
+
+            #:TODO: 根据不同的parser解析
+                #TODO:update table app_info.,self.fetch_app()
+
 
         except Exception as e:
-            pass
+            print e
 
         self.logger.info(u"FetchEnd  {} {}".format(time.time() - start_ts, url))
 
         return True
+
+    def fetch_myapp_app(self,response):
+        parser = MyappParser()
+        app = parser.parse_app_data(response.text)
+        related_apps = parser.parse_related_apps(response.text)
+        sameDev_apps = parser.parse_samedev_apps(response.text)
+
+        related_apps.extend(sameDev_apps)
+        return app,related_apps
+
 
     def get_seeds(self):
         seedfiles = os.listdir(self._seedsdir)
@@ -78,6 +104,7 @@ class fetcher:
 
                 ret = False
                 try:
+
                     ret = self.get_from_url(url, suburl_filter)
                     if ret:
                         sql = u"""update app_Seeds set fetchTimes = 1 where url = '{}'""".format(url);
@@ -105,7 +132,41 @@ class fetcher:
             os.remove(real_f+'.done')
 
 
+    def store_suburls(self,suburls, url, suburl_filter):
+        conn = getConn("taierdb")
+
+        numSubLinks  = len(suburls)
+        if not url:
+            self.logger.warning("parentUrl is None")
+            return False
+
+        suburl_filter = suburl_filter.strip()
+        dimensions = {"parentUrl": url.strip()}
+        table="app_Seeds"
+        numNewSubLinks = numSubLinks - len(getRecord(dimensions, table, conn=conn) or [])
+        numNewSubLinks = (numNewSubLinks >= 0) and numNewSubLinks or 0
+
+        dimensions = {"url": url.strip(), "domain": suburl_filter}
+        measures = {"numSubLinks": numSubLinks, "numNewSubLinks": numNewSubLinks}
+
+        loadRecord(measures, dimensions, table, conn=conn)
+
+
+        for surl in suburls:
+            if not surl:
+                continue
+
+        dimensions = {"url": surl.strip()}
+        measures = {"errorTimes": 0, "fetchTimes": 0, "parentUrl": url.strip(), "domain": suburl_filter}
+
+        if not getRecord(dimensions, table, conn=conn):
+            insertRecord(measures, dimensions, table, conn=conn)
+
+        conn.close()
+        return True
 
 if "__main__" == __name__:
     fetcher = fetcher()
-    fetcher.get_seeds()
+    while True:
+        fetcher.get_seeds()
+        time.sleep(10)

@@ -14,8 +14,6 @@ def transV(values):
 def joinKV(keys, values):
     return ["`%s`=%s" % (keys[i], values[i]) for i in xrange(len(keys))]
 
-
-
 ####################################################
 # 建立数据库连接
 def getConn(dbname):
@@ -31,28 +29,12 @@ def getConn(dbname):
         db = cf.get(dbname, "db"))
     return conn
 
-
-def getConnScoreDB():
-    import ConfigParser
-    cf = ConfigParser.ConfigParser()
-    cf.read("../conf/db.conf")
-
-    conn = MySQLdb.connect(
-        host = cf.get("scoredb", "host"),
-        port = int(cf.get("scoredb", "port")),
-        user = cf.get("scoredb", "user"),
-        passwd = cf.get("scoredb", "passwd"),
-        db = cf.get("scoredb", "db"))
-    return conn
-
-
 ####################################################
 # 执行sql
 def sqlExecute(sql, conn=None):
     try:
         inner_conn = False
         if not conn:
-            conn = getConnScoreDB()
             inner_conn = True
         cur = conn.cursor()
         cur.execute(u'SET autocommit = 0;')
@@ -85,7 +67,7 @@ def sqlExecute(sql, conn=None):
 # 写mysql，更新已存在的记录
 def updateRecord(measures, dimensions, table, conn=None):
     curTime = "%s" % datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    measures['modify_time'] = curTime
+    measures['modifytime'] = curTime
 
     _dimensions = joinKV(dimensions.keys(), transV(dimensions.values()))
     _dimensions = u"WHERE %s" % " AND ".join(_dimensions)
@@ -103,8 +85,8 @@ def updateRecord(measures, dimensions, table, conn=None):
 # 写mysql，插入新记录
 def insertRecord(measures, dimensions, table, conn=None):
     curTime = "%s" % datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    measures['create_time'] = curTime
-    measures['modify_time'] = curTime
+    measures['createtime'] = curTime
+    measures['modifytime'] = curTime
 
     _measures = copy.deepcopy(measures)
     _measures.update(dimensions)

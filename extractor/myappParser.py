@@ -47,27 +47,27 @@ class MyappParser:
 
         # Reaching Useful Data
 
-        app_data['Script'] = self.extract_node_text(html_map, 'Script',True)
-        for script in app_data['Script']:
+        scripts = self.extract_node_text(html_map, 'Script',True)
+        for script in scripts:
             appDetailData =  re.findall(r"appDetailData",script)
             if appDetailData:
                 app_data['apkName'] = re.findall(r"apkName.*\"(.*)\",",script)[0]
-                app_data['Name'] = re.findall(r"appName.*\"(.*)\",",script)[0]
+                app_data['name'] = re.findall(r"appName.*\"(.*)\",",script)[0]
                 app_data['apkCode'] = re.findall(r"apkCode.*\"(.*)\",",script)[0]
                 app_data['appId'] = re.findall(r"appId.*\"(.*)\",",script)[0]
                 app_data['iconUrl'] = re.findall(r"iconUrl.*\"(.*)\",",script)[0]
                 app_data['downTimes'] = re.findall(r"downTimes.*\"(.*)\",",script)[0]
                 app_data['downUrl'] = re.findall(r"downUrl.*\"(.*)\",",script)[0]
 
-        app_data['Category'] = self.extract_node_text(html_map, 'Category')
-        app_data['Size'] = self.extract_node_text(html_map, 'Size')
-        app_data['Ad'] = self.extract_node_text(html_map, 'Ad')
-        app_data['Score'] = self.extract_node_text(html_map, 'Score')
-        app_data['CommentCount'] = self.extract_node_text(html_map, 'CommentCount')
-        app_data['Screenshots'] = self.extract_node_text(html_map, 'Screenshots', True)
-        app_data['Description'] = "\n".join(self.extract_node_text(html_map, 'Description', True))
-        app_data['CurrentVersion'] = self.extract_node_text(html_map, 'othinfo-data',True)[0]
-        app_data['Developer'] = self.extract_node_text(html_map, 'othinfo-data',True)[1]
+        app_data['category'] = self.extract_node_text(html_map, 'Category')
+        app_data['size'] = self.extract_node_text(html_map, 'Size')
+        app_data['hasAd'] = self.extract_node_text(html_map, 'Ad')
+        app_data['score'] = self.extract_node_text(html_map, 'Score')
+        app_data['reviewCount'] = self.extract_node_text(html_map, 'CommentCount')
+        #app_data['screenshots'] = self.extract_node_text(html_map, 'Screenshots', True)
+        app_data['description'] = "\n".join(self.extract_node_text(html_map, 'Description', True))
+        app_data['currentVersion'] = self.extract_node_text(html_map, 'othinfo-data',True)[0]
+        app_data['developer'] = self.extract_node_text(html_map, 'othinfo-data',True)[1]
 
         return app_data
 
