@@ -5,6 +5,7 @@ import sys, os
 import time
 import codecs
 from extractor.myappParser import MyappParser
+from extractor.sjbaiduParser import SjbaiduParser
 reload(sys)
 sys.setdefaultencoding('utf-8')
 sys.path.append(u'..')
@@ -53,7 +54,7 @@ class fetcher:
                 return False
 
 
-            app,sublink = self.fetch_myapp_app(response)
+            app,sublink = self.fetch_sjbaidu_app(response)
             app_data= {}
             for key in app.keys():
                 app_data[key] = app[key] or u''
@@ -86,7 +87,12 @@ class fetcher:
         related_apps.extend(sameDev_apps)
         return app,related_apps
 
+    def fetch_sjbaidu_app(self,response):
+        parser = SjbaiduParser()
+        related_apps = parser.parse_related_apps(response.text)
+        app = parser.parse_app_data(response.text)
 
+        return app,related_apps
     def get_seeds(self):
         seedfiles = os.listdir(self._seedsdir)
         for f in seedfiles:

@@ -7,17 +7,20 @@ sys.setdefaultencoding('utf8')
 sys.path.append(u'..')
 
 from extractor.myappParser import MyappParser
+from extractor.sjbaiduParser import SjbaiduParser
 from util.mysqlWrapper import *
 from util.browserHelper import *
 import string
 import urllib
 import os
+import requests
 
 class Controler():
     def __init__(self):
         self._seeds_num = 100
         self._output_path = '../seeds/'
         self._db = 'taierdb'
+        self.seeds =[]
 
     #构造搜索关键字
     def get_keywords(self):
@@ -34,39 +37,53 @@ class Controler():
             yield keyword
 
     #通过搜索关键字获得初始seeds
-    def get_seeds_by_search(self, domain):
-        seeds = []
-        for keyword in self.get_keywords():
+    def get_seeds_by_search(self, keyword,domains):
+        for domain in domains:
             if domain.startswith('http://sj.qq.com'):
                 url = 'http://sj.qq.com/myapp/search.htm?kw={0}'.format(keyword)
-                page = load_page(url)
+                page = load_scroll_page(url)
                 parser = MyappParser()
-                for starturl in parser.extract_search_url(page):
-
-                    if starturl:
-
-                        #检查seeds中是否已经有链接了
-                        inSeeds = False
-                        conn = getConn(self._db)
-                        sql = 'select url from app_Seeds'
-                        url =  sqlExecute(sql, conn)
-                        for each in url:
-                            if starturl in each:
-                                inSeeds = True
-                        if (inSeeds ==False):
-                            seed =[starturl,domain]
-                            seeds.append(seed)
-                            if len(seeds)>=self._seeds_num:
-                                self.output_seeds(seeds)
-                                seeds = []
+                self.generate_seeds(page,parser,domain)
 
             if domain.startswith('http://zhushou.360.cn'):
                 url = 'http://zhushou.360.cn/search/index/?kw={0}'.format(keyword)
                 #:TODO
             if domain.startswith('http://shouji.baidu.com'):
-                url = 'http://shouji.baidu.com/s?wd={0}'.format(keyword)
+                parser = SjbaiduParser()
+                nextpage = 1
+                page = requests.get('http://shouji.baidu.com/s?wd={0}'.format(keyword)).text
+                totalpage = int(parser.get_totalpage(page))
+                while (nextpage <= totalpage):
+
+                    url = 'http://shouji.baidu.com/s?wd={0}#page{1}'.format(keyword,nextpage)
+                    response = requests.get(url)
+                    page = response.text
+                    if not page or response.status_code != requests.codes.ok:
+                        hasnext = False
+                        print "eror to get url",url
+                    else:
+                        self.generate_seeds(page,parser,domain)
+                        nextpage += 1
+
                 #:TODO
 
+    def generate_seeds(self,page,parser,domain):
+        for starturl in parser.extract_search_url(page):
+                if starturl:
+                    #检查seeds中是否已经有链接了
+                    inSeeds = False
+                    conn = getConn(self._db)
+                    sql = 'select url from app_Seeds'
+                    url =  sqlExecute(sql, conn)
+                    for each in url:
+                        if starturl in each:
+                            inSeeds = True
+                    if (inSeeds ==False):
+                        seed =[starturl,domain]
+                        self.seeds.append(seed)
+                        if len(self.seeds)>=self._seeds_num:
+                            self.output_seeds(self.seeds)
+                            self.seeds = []
 
     #监测下游是否抓取、反馈完毕,Ture 表示已经反馈完毕
     def get_crawler_stats(self):
@@ -133,8 +150,8 @@ class Controler():
             conn = getConn(self._db)
             if conn:
                 domains = self.get_domain(conn)
-                for domain in domains:
-                    self.get_seeds_by_search(domain)
+                for keyword in self.get_keywords():
+                    self.get_seeds_by_search(keyword,domains)
 
     def main_work(self):
         pass

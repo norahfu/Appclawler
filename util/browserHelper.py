@@ -29,7 +29,7 @@ def scroll(driver):
         })();
         """)
 #loal all page content, used for myapps
-def load_page(url):
+def load_scroll_page(url):
     service_args = [
             '--load-images=no'
         ]
@@ -68,3 +68,7 @@ def load_page(url):
 
     browser.close()
     return whole_page
+
+
+
+
