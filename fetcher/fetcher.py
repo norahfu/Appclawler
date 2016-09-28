@@ -55,15 +55,16 @@ class fetcher:
 
 
             app,sublink = self.fetch_sjbaidu_app(response)
-            app_data= {}
+
             for key in app.keys():
-                app_data[key] = app[key] or u''
+                if app[key] is None:
+                    app[key] = u''
             #app_data = [data or u'' for data in app]
-            ####:TODO'
+
             dimensions = {"url": url.strip(), "domain": suburl_filter}
             conn = getConn("taierdb")
             table = "app_Info"
-            insertRecord(app_data, dimensions, table, conn=conn)
+            loadRecord(app, dimensions, table, conn=conn)
             conn.close()
             self.store_suburls(sublink,url,suburl_filter)
 
@@ -72,6 +73,7 @@ class fetcher:
 
 
         except Exception as e:
+            print real_url
             print e
 
         self.logger.info(u"FetchEnd  {} {}".format(time.time() - start_ts, url))
@@ -91,8 +93,8 @@ class fetcher:
         parser = SjbaiduParser()
         related_apps = parser.parse_related_apps(response.text)
         app = parser.parse_app_data(response.text)
-
         return app,related_apps
+
     def get_seeds(self):
         seedfiles = os.listdir(self._seedsdir)
         for f in seedfiles:

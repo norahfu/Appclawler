@@ -9,22 +9,20 @@ from lxml import html
 class XPath:
 
     xPaths = {
-        "Name" : "//div[@class='det-name']/div[@class='det-name-int']/text()",
-        "Screenshots": "//div[@class='pic-img-box']/img/@data-src",
-        "Category": "//div[@class='det-type-box']/a[@class='det-type-link']/text()",
-        "Developer": "//div[@class='det-othinfo-data' and @id='J_ApkPublishTime']/text()",
-        "Description": "//div[@class='det-app-data-info']/text()|//div[@class='show-more-content text-body' and @itemprop='description']/div/p/text()",
-        "Score": "//div[@class='com-blue-star-num']/text()",
-        "Size":"//div[@class='det-size']/text()",
-        "Ad":"//div[@class='det-adv adv-btn']/text()",
-        "CommentCount":"//a[@class='det-comment-num']/a[@id='J_CommentCount']/text()",
-        "Script":"//script[@type='text/javascript']/text()",
-        # load by js,TODO
-        "LastUpdateDate":"//div[@class='det-othinfo-data' and @id=['J_ApkPublishTime']/text()",
-        "othinfo-data": "//div[@class='det-othinfo-data']/text()",
-        "DeveloperUrls": "//div[@class='content contains-text-link']/a[@class='dev-link']",
-        #"RelatedApps": "//li[@class='firrow']/a[@class='app-box' and @target='_blank']/@href",
-        "RelatedApps": "//li[@class='firrow']",
+        "Name" : "//h1[@class='app-name']/span/text()",
+         "Category": "//span/a[@target='_self']/text()",
+        "Description": "//div[@class='brief-long']/p[@class='content content_hover']/text() |"
+                       "//div[@class='brief-long']/p[@class='content']/text()"
+        ,
+        "Score": "//span[@class='star-percent']/@style",
+        "Size":"//div[@class='detail']/span[@class='size']/text()",
+        "downTimes":"//div[@class='detail']/span[@class='download-num']/text()",
+        "currentVersion":"//div[@class='detail']/span[@class='version']/text()",
+        "appfeaturedetail":"//div[@class='content-right']/div[@class='app-feature']/span[@class='app-feature-detail']/span[@class='res-tag-ok']/text() | "
+                           "div[@class='content-right']/div[@class='app-feature']/span[@class='app-feature-detail']/span[@class='res-tag-warning']/text()",
+        "downUrl":"//div[@class='area-download']/a[@class='apk']/@href",
+        "iconUrl":"//div[@class='app-pic']/img[@*]/@src",
+        "RelatedApps": "//div[@class='app-bd show']//@href",
 
     }
 
@@ -41,28 +39,23 @@ class SjbaiduParser:
         app_data = dict()
         # Loading Html
         html_map = lxml.html.fromstring(html)
-        # Reaching Useful Data
-        scripts = self.extract_node_text(html_map, 'Script',True)
-        for script in scripts:
-            appDetailData =  re.findall(r"appDetailData",script)
-            if appDetailData:
-                app_data['apkName'] = re.findall(r"apkName.*\"(.*)\",",script)[0]
-                app_data['name'] = re.findall(r"appName.*\"(.*)\",",script)[0]
-                app_data['apkCode'] = re.findall(r"apkCode.*\"(.*)\",",script)[0]
-                app_data['appId'] = re.findall(r"appId.*\"(.*)\",",script)[0]
-                app_data['iconUrl'] = re.findall(r"iconUrl.*\"(.*)\",",script)[0]
-                app_data['downTimes'] = re.findall(r"downTimes.*\"(.*)\",",script)[0]
-                app_data['downUrl'] = re.findall(r"downUrl.*\"(.*)\",",script)[0]
 
-        app_data['category'] = self.extract_node_text(html_map, 'Category')
-        app_data['size'] = self.extract_node_text(html_map, 'Size')
-        app_data['hasAd'] = self.extract_node_text(html_map, 'Ad')
-        app_data['score'] = self.extract_node_text(html_map, 'Score')
-        app_data['reviewCount'] = self.extract_node_text(html_map, 'CommentCount')
-        #app_data['screenshots'] = self.extract_node_text(html_map, 'Screenshots', True)
+        app_data['name'] = self.extract_node_text(html_map, 'Name')
+
+        app_data['category'] = self.extract_node_text(html_map, 'Category',True)[2]
+        appfeaturedetail = self.extract_node_text(html_map, 'appfeaturedetail',True)
+        app_data['hasAd'] = int((u'含广告') in appfeaturedetail)
+        app_data['isSecure'] = int((u'安全') in appfeaturedetail)
+        app_data['size'] = self.extract_node_text(html_map, 'Size').lstrip(u'大小：')
+        app_data['currentVersion'] =self.extract_node_text(html_map, 'currentVersion').lstrip(u'版本：')
+        app_data['downTimes'] =self.extract_node_text(html_map, 'downTimes').lstrip(u'下载次数：')
+
+        app_data['score'] = self.extract_node_text(html_map, 'Score').lstrip('width:')
+        app_data['downUrl'] = self.extract_node_text(html_map, 'downUrl')
+        app_data['iconUrl'] = self.extract_node_text(html_map, 'iconUrl')
+
+
         app_data['description'] = "\n".join(self.extract_node_text(html_map, 'Description', True))
-        app_data['currentVersion'] = self.extract_node_text(html_map, 'othinfo-data',True)[0]
-        app_data['developer'] = self.extract_node_text(html_map, 'othinfo-data',True)[1]
 
         return app_data
 
@@ -70,11 +63,8 @@ class SjbaiduParser:
         # Loading Html
         html_map = lxml.html.fromstring(html)
         # Reaching Useful Data
-        #:TODO 解析不出数据啦
-
         xpath = XPath.xPaths['RelatedApps']
         nodes = html_map.xpath(xpath)
-        nodes = map(lambda node: node.lstrip(".."),nodes)
         # Appending url prefix to the actual url found within the html
         return map((lambda url: '{0}{1}'.format('http://shouji.baidu.com', url)), nodes)
 
