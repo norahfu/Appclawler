@@ -46,9 +46,9 @@ class SjbaiduParser:
         appfeaturedetail = self.extract_node_text(html_map, 'appfeaturedetail',True)
         app_data['hasAd'] = int((u'含广告') in appfeaturedetail)
         app_data['isSecure'] = int((u'安全') in appfeaturedetail)
-        app_data['size'] = self.extract_node_text(html_map, 'Size').lstrip(u'大小：')
-        app_data['currentVersion'] =self.extract_node_text(html_map, 'currentVersion').lstrip(u'版本：')
-        app_data['downTimes'] =self.extract_node_text(html_map, 'downTimes').lstrip(u'下载次数：')
+        app_data['size'] = self.extract_node_text(html_map, 'Size').lstrip(u'大小:')
+        app_data['currentVersion'] =self.extract_node_text(html_map, 'currentVersion').lstrip(u'版本:')
+        app_data['downTimes'] =self.extract_node_text(html_map, 'downTimes').lstrip(u'下载次数:')
 
         app_data['score'] = self.extract_node_text(html_map, 'Score').lstrip('width:')
         app_data['downUrl'] = self.extract_node_text(html_map, 'downUrl')
