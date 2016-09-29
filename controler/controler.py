@@ -8,6 +8,7 @@ sys.path.append(u'..')
 
 from extractor.myappParser import MyappParser
 from extractor.sjbaiduParser import SjbaiduParser
+from extractor.zhushou360Parser import Zhushou360Parser
 from util.mysqlWrapper import *
 from util.browserHelper import *
 import string
@@ -46,7 +47,23 @@ class Controler():
                 self.generate_seeds(page,parser,domain)
 
             if domain.startswith('http://zhushou.360.cn'):
-                url = 'http://zhushou.360.cn/search/index/?kw={0}'.format(keyword)
+                nextpage = 1
+
+                parser = Zhushou360Parser()
+                is_pageend = False
+                while not is_pageend:
+                    url = 'http://zhushou.360.cn/search/index/?kw={0}&page={1}'.format(keyword,nextpage)
+                    response= requests.get(url)
+                    page = response.text
+                    if not page or response.status_code != requests.codes.ok:
+                        is_pageend = True
+                        print "eror to get url",url
+                    else:
+                        self.generate_seeds(page,parser,domain)
+                        nextpage += 1
+                        is_pageend = parser.is_pageEnd(page)
+
+
                 #:TODO
             if domain.startswith('http://shouji.baidu.com'):
                 parser = SjbaiduParser()
@@ -65,12 +82,13 @@ class Controler():
                         self.generate_seeds(page,parser,domain)
                         nextpage += 1
 
-                #:TODO
+
 
     def generate_seeds(self,page,parser,domain):
         for starturl in parser.extract_search_url(page):
                 if starturl:
                     #检查seeds中是否已经有链接了
+                    #TODO: is it neccessary????
                     inSeeds = False
                     conn = getConn(self._db)
                     sql = 'select url from app_Seeds'

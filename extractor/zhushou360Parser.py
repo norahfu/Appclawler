@@ -2,6 +2,7 @@
 #coding=utf-8
 __author__ = 'Norah'
 import lxml
+
 import lxml.html
 from lxml import html
 
@@ -21,13 +22,16 @@ class XPath:
                            "div[@class='content-right']/div[@class='app-feature']/span[@class='app-feature-detail']/span[@class='res-tag-warning']/text()",
         "downUrl":"//div[@class='area-download']/a[@class='apk']/@href",
         "iconUrl":"//div[@class='app-pic']/img[@*]/@src",
-        "RelatedApps": "//div[@class='app-bd show']//@href",
+        #"guesslikeapps": "//ul[@id='likelist']//li/a[@class='click-log']/@href",
+        "guesslikeapps": "//ul[@id='likelist']//li",
+
+        "categoryhotapps": "//ul[@id='category-hot']//li/a[@class='click-log']/@href",
 
     }
 
 
 
-class SjbaiduParser:
+class Zhushou360Parser:
 
     def parse_app_data(self, html):
         """
@@ -58,14 +62,23 @@ class SjbaiduParser:
 
         return app_data
 
-    def parse_related_apps(self, html):
+    def parse_guess_like_apps(self, html):
         # Loading Html
         html_map = lxml.html.fromstring(html)
         # Reaching Useful Data
-        xpath = XPath.xPaths['RelatedApps']
+        xpath = XPath.xPaths['guesslikeapps']
         nodes = html_map.xpath(xpath)
         # Appending url prefix to the actual url found within the html
-        return map((lambda url: '{0}{1}'.format('http://shouji.baidu.com', url)), nodes)
+        return map((lambda url: '{0}{1}'.format('http://zhushou.360.cn', url)), nodes)
+
+    def parse_category_hot_apps(self, html):
+        # Loading Html
+        html_map = lxml.html.fromstring(html)
+        # Reaching Useful Data
+        xpath = XPath.xPaths['categoryhotapps']
+        nodes = html_map.xpath(xpath)
+        # Appending url prefix to the actual url found within the html
+        return map((lambda url: '{0}{1}'.format('http://zhushou.360.cn', url)), nodes)
 
 
     def extract_node_text(self, map, key, is_list=False):
@@ -90,25 +103,28 @@ class SjbaiduParser:
             return [x for x in node if x not in seen and not seen.add(x)]
 
     def extract_search_url(self,page):
-        xpath ="//div[@class='app']/div[@class='icon']/a[@target='_blank']"
+        xpath ="//div[@class='SeaCon']/ul//li/dl/dt/a"
         tree = html.fromstring(page)
         urls = tree.xpath(xpath)
         if urls is None or len(urls) == 0:
             yield None
 
         # Go on each node looking for urls
-        url_prefix = 'http://shouji.baidu.com'
+        url_prefix = 'http://zhushou.360.cn'
         for node in urls:
             if "href" in node.attrib :
                 url = node.attrib["href"]
                 yield "{0}{1}".format(url_prefix, url)
 
-    def get_totalpage(self,page):
+    def is_pageEnd(self,page):
 
-        xpath ="//input[@class='total-page']/@value"
+        xpath ="//div[@class='srtcon']/div[@class='nofd']/text()"
         tree = html.fromstring(page)
-        totalpage = tree.xpath(xpath)[0]
+        pageend = tree.xpath(xpath)
+        if pageend:
+            if (u'没有找到相关应用') in pageend:
+                return True
 
-        return totalpage
+        return False
 
 

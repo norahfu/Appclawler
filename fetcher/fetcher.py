@@ -6,6 +6,7 @@ import time
 import codecs
 from extractor.myappParser import MyappParser
 from extractor.sjbaiduParser import SjbaiduParser
+from extractor.zhushou360Parser import Zhushou360Parser
 reload(sys)
 sys.setdefaultencoding('utf-8')
 sys.path.append(u'..')
@@ -54,7 +55,7 @@ class fetcher:
                 return False
 
 
-            app,sublink = self.fetch_sjbaidu_app(response)
+            app,sublink = self.fetch_zhushou360_app(response)
 
             for key in app.keys():
                 if app[key] is None:
@@ -93,6 +94,15 @@ class fetcher:
         parser = SjbaiduParser()
         related_apps = parser.parse_related_apps(response.text)
         app = parser.parse_app_data(response.text)
+        return app,related_apps
+
+    def fetch_zhushou360_app(self,response):
+        parser = Zhushou360Parser()
+        #app = parser.parse_app_data(response.text)
+        related_apps = parser.parse_guess_like_apps(response.text)
+        categoryhot_apps = parser.parse_category_hot_apps(response.text)
+
+        related_apps.extend(categoryhot_apps)
         return app,related_apps
 
     def get_seeds(self):
