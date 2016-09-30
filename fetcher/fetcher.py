@@ -57,11 +57,18 @@ class fetcher:
                 self.logger.debug(u"Fetch failed with status code: {}".format(response.status_code))
                 return False
 
+            print real_url
             # page = load_page(real_url) :TODO 有一些js的数据抓不到
+            if 'qq'in suburl_filter:
+                app,sublink = self.fetch_myapp_app(page)
+                print 'qq'
+            if '360' in suburl_filter:
+                print '360'
+                app,sublink = self.fetch_zhushou360_app(page)
 
-
-
-            app,sublink = self.fetch_zhushou360_app(page)
+            if 'baidu'in suburl_filter:
+                print 'baidu'
+                app,sublink = self.fetch_sjbaidu_app(page)
 
             for key in app.keys():
                 if app[key] is None:
@@ -129,22 +136,38 @@ class fetcher:
                 self.logger.debug(u"start idxLine: {}/{}".format(idxLine, numLine))
 
                 ret = False
+                conn = getConn("taierdb")
+                table = 'app_Seeds'
+
                 try:
 
                     ret = self.get_from_url(url, suburl_filter)
-                    if ret:
-                        sql = u"""update app_Seeds set fetchTimes = 1 where url = '{}'""".format(url);
+                    sql = u"""select errorTimes from app_Seeds where url = '{}'""".format(url);
+                    errorTimessql = sqlExecute(sql, conn)
+                    if not errorTimessql:
+                        errorTimes = 0
                     else:
-                        sql = u"""update app_Seeds set errorTimes = errorTimes + 1, fetchTimes = 1 where url = '{}'""".format(url);
+                        errorTimes = sqlExecute(sql, conn)[0][0];
+
+                    if ret:
+                        dimensions = {"url": url.strip(), "domain": suburl_filter}
+                        measures = {"fetchTimes": 1,"errorTimes":errorTimes}
+
+                        # sql = u"""update app_Seeds set fetchTimes = 1 where url = '{}'""".format(url);
+                    else:
+                        dimensions = {"url": url.strip(), "domain": suburl_filter}
+                        errorTimes += 1
+                        measures = {"fetchTimes": 1,"errorTimes":errorTimes}
+                        # sql = u"""update app_Seeds set errorTimes = errorTimes + 1, fetchTimes = 1 where url = '{}'""".format(url);
 
                 except Exception as e:
                     self.logger.warning(str(e))
                     self.logger.warning(traceback.format_exc())
                     continue
 
-                conn = getConn("taierdb")
                 try:
-                    sqlExecute(sql, conn);
+                    loadRecord(measures, dimensions, table, conn=conn)
+                    #sqlExecute(sql, conn);
 
                 except Exception as e:
                     self.logger.warning(str(e))
@@ -162,6 +185,7 @@ class fetcher:
         conn = getConn("taierdb")
 
         numSubLinks  = len(suburls)
+        # 如果没有extend的url，直接跳出
         if numSubLinks == 0:
             return False
         if not url:
@@ -184,11 +208,11 @@ class fetcher:
             if not surl:
                 continue
 
-        dimensions = {"url": surl.strip()}
-        measures = {"errorTimes": 0, "fetchTimes": 0, "parentUrl": url.strip(), "domain": suburl_filter}
+            dimensions = {"url": surl.strip()}
+            measures = {"errorTimes": 0, "fetchTimes": 0, "parentUrl": url.strip(), "domain": suburl_filter}
 
-        if not getRecord(dimensions, table, conn=conn):
-            insertRecord(measures, dimensions, table, conn=conn)
+            if not getRecord(dimensions, table, conn=conn):
+                insertRecord(measures, dimensions, table, conn=conn)
 
         conn.close()
         return True

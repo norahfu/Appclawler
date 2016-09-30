@@ -42,6 +42,7 @@ class Controler():
         for domain in domains:
             if domain.startswith('http://sj.qq.com'):
                 url = 'http://sj.qq.com/myapp/search.htm?kw={0}'.format(keyword)
+                print url
                 page = load_scroll_page(url)
                 parser = MyappParser()
                 self.generate_seeds(page,parser,domain)
@@ -53,6 +54,7 @@ class Controler():
                 is_pageend = False
                 while not is_pageend:
                     url = 'http://zhushou.360.cn/search/index/?kw={0}&page={1}'.format(keyword,nextpage)
+                    print url
                     response= requests.get(url)
                     page = response.text
                     if not page or response.status_code != requests.codes.ok:
@@ -73,6 +75,7 @@ class Controler():
                 while (nextpage <= totalpage):
 
                     url = 'http://shouji.baidu.com/s?wd={0}#page{1}'.format(keyword,nextpage)
+                    print url
                     response = requests.get(url)
                     page = response.text
                     if not page or response.status_code != requests.codes.ok:
@@ -159,8 +162,9 @@ class Controler():
 
     def get_start_seeds(self):
         if self._output_path:
-            if not self.get_crawler_stats():
-                return
+            pass
+            # if not self.get_crawler_stats():
+            #     return
         else:
             print 'controler has no path error'
 
@@ -169,6 +173,7 @@ class Controler():
             if conn:
                 domains = self.get_domain(conn)
                 for keyword in self.get_keywords():
+                    print keyword
                     self.get_seeds_by_search(keyword,domains)
 
     def main_work(self):
@@ -176,5 +181,6 @@ class Controler():
 
 if "__main__" == __name__:
     controler = Controler()
+
     controler.get_start_seeds()
     #controler.get_db_seeds()

@@ -83,7 +83,7 @@ class Zhushou360Parser:
         app_data['lastUpdateDate'] = baseinfo[1]
         app_data['currentVersion'] = baseinfo[2]
         app_data['minimumOSVersion'] = baseinfo[3].lstrip('Android ')
-        print app_data['minimumOSVersion']
+
         app_data['language'] = baseinfo[4]
 
 

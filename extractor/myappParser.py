@@ -17,7 +17,7 @@ class XPath:
         "Description": "//div[@class='det-app-data-info']/text()|//div[@class='show-more-content text-body' and @itemprop='description']/div/p/text()",
         "Score": "//div[@class='com-blue-star-num']/text()",
         "Size":"//div[@class='det-size']/text()",
-        "Ad":"//div[@class='det-adv adv-btn']/text()",
+        "Ad":"//div[@id='J_AdvBox']/text()",
         "CommentCount":"//a[@class='det-comment-num']/a[@id='J_CommentCount']/text()",
         "Script":"//script[@type='text/javascript']/text()",
         # load by js,TODO
@@ -61,7 +61,8 @@ class MyappParser:
 
         app_data['category'] = self.extract_node_text(html_map, 'Category')
         app_data['size'] = self.extract_node_text(html_map, 'Size')
-        app_data['hasAd'] = self.extract_node_text(html_map, 'Ad')
+        # :TODO page里面没有ad的内容
+        # app_data['hasAd'] = self.extract_node_text(html_map, 'Ad')
         app_data['score'] = self.extract_node_text(html_map, 'Score')
         app_data['reviewCount'] = self.extract_node_text(html_map, 'CommentCount')
         #app_data['screenshots'] = self.extract_node_text(html_map, 'Screenshots', True)
