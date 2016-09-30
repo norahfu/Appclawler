@@ -14,6 +14,7 @@ sys.path.append(u'..')
 import urllib
 import logging
 from urllib import urlopen
+from util.browserHelper import *
 
 import requests
 import traceback
@@ -49,13 +50,18 @@ class fetcher:
         self.logger.info(u"==FetchStart== {}, {}".format(start_ts, url))
 
         try:
+            #real_url = 'http://zhushou.360.cn/detail/index/soft_id/3488793'
             response = requests.get(url=real_url)    # 最基本的GET请求
-            if not response.text or response.status_code != requests.codes.ok:
+            page = response.text
+            if not page or response.status_code != requests.codes.ok:
                 self.logger.debug(u"Fetch failed with status code: {}".format(response.status_code))
                 return False
 
+            # page = load_page(real_url) :TODO 有一些js的数据抓不到
 
-            app,sublink = self.fetch_zhushou360_app(response)
+
+
+            app,sublink = self.fetch_zhushou360_app(page)
 
             for key in app.keys():
                 if app[key] is None:
@@ -81,28 +87,30 @@ class fetcher:
 
         return True
 
-    def fetch_myapp_app(self,response):
+    def fetch_myapp_app(self,page):
         parser = MyappParser()
-        app = parser.parse_app_data(response.text)
-        related_apps = parser.parse_related_apps(response.text)
-        sameDev_apps = parser.parse_samedev_apps(response.text)
+        app = parser.parse_app_data(page)
+        related_apps = parser.parse_related_apps(page)
+        sameDev_apps = parser.parse_samedev_apps(page)
 
         related_apps.extend(sameDev_apps)
         return app,related_apps
 
-    def fetch_sjbaidu_app(self,response):
+    def fetch_sjbaidu_app(self,page):
         parser = SjbaiduParser()
-        related_apps = parser.parse_related_apps(response.text)
-        app = parser.parse_app_data(response.text)
+        related_apps = parser.parse_related_apps(page)
+        app = parser.parse_app_data(page)
         return app,related_apps
 
-    def fetch_zhushou360_app(self,response):
+    def fetch_zhushou360_app(self,page):
         parser = Zhushou360Parser()
-        #app = parser.parse_app_data(response.text)
-        related_apps = parser.parse_guess_like_apps(response.text)
-        categoryhot_apps = parser.parse_category_hot_apps(response.text)
+        app = parser.parse_app_data(page)
+        ## :TODO:360手机助手的链接是动态生成的，需要重新考虑
+        related_apps = []
+        # related_apps = parser.parse_guess_like_apps(page)
+        # categoryhot_apps = parser.parse_category_hot_apps(page)
 
-        related_apps.extend(categoryhot_apps)
+        # related_apps.extend(categoryhot_apps)
         return app,related_apps
 
     def get_seeds(self):
@@ -154,6 +162,8 @@ class fetcher:
         conn = getConn("taierdb")
 
         numSubLinks  = len(suburls)
+        if numSubLinks == 0:
+            return False
         if not url:
             self.logger.warning("parentUrl is None")
             return False

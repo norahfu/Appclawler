@@ -9,23 +9,30 @@ from lxml import html
 class XPath:
 
     xPaths = {
-        "Name" : "//h1[@class='app-name']/span/text()",
-         "Category": "//span/a[@target='_self']/text()",
-        "Description": "//div[@class='brief-long']/p[@class='content content_hover']/text() |"
-                       "//div[@class='brief-long']/p[@class='content']/text()"
-        ,
-        "Score": "//span[@class='star-percent']/@style",
-        "Size":"//div[@class='detail']/span[@class='size']/text()",
-        "downTimes":"//div[@class='detail']/span[@class='download-num']/text()",
-        "currentVersion":"//div[@class='detail']/span[@class='version']/text()",
-        "appfeaturedetail":"//div[@class='content-right']/div[@class='app-feature']/span[@class='app-feature-detail']/span[@class='res-tag-ok']/text() | "
-                           "div[@class='content-right']/div[@class='app-feature']/span[@class='app-feature-detail']/span[@class='res-tag-warning']/text()",
-        "downUrl":"//div[@class='area-download']/a[@class='apk']/@href",
-        "iconUrl":"//div[@class='app-pic']/img[@*]/@src",
+        "Name" : "//h2[@id='app-name']/span/text()",
+        "reviewCount":"//span[@class='js-comments review-count-all']/text()",
+        "category": "//div[@class='app-tags']/a[@*]/text()",
+        "description": "//div[@class='breif']/text()",
+        "baseinfo": "//div[@class='base-info']//td/text()",
+
+        "Score": "//div[@class='pf']/span[@class='s-1 js-votepanel']/text()",
+
+        "downTimes":"//div[@class='pf']/span[@class='s-3']/text()",
+        "size":"//div[@class='pf']/span[@class='s-3']/text()",
+        "downUrl":"//dd/a[@*]/@href",
+        "appId":"//dd/a[@*]/@data-sid",
+
+        "iconUrl":"//dl[@class='clearfix']/dt/img/@src",
         #"guesslikeapps": "//ul[@id='likelist']//li/a[@class='click-log']/@href",
         "guesslikeapps": "//ul[@id='likelist']//li",
+        "infors": "//div[@class='title']/ul/li/text()",
+        "paidInfo": "//div[@class='tips-box blue' and @id='feePanel']/p/text()",
+
+        "numPermissions": "//li[@class='item-3' and @id='authority-tg']/text()",
+        "permissions": "//div[@class='tips-box red' and @id='authority-panel']/p/text()",
 
         "categoryhotapps": "//ul[@id='category-hot']//li/a[@class='click-log']/@href",
+
 
     }
 
@@ -44,21 +51,41 @@ class Zhushou360Parser:
         html_map = lxml.html.fromstring(html)
 
         app_data['name'] = self.extract_node_text(html_map, 'Name')
+        app_data['category'] = self.extract_node_text(html_map, 'category',True)
+        if app_data['category']:
+            app_data['category'] = "-".join(app_data['category'])
 
-        app_data['category'] = self.extract_node_text(html_map, 'Category',True)[2]
-        appfeaturedetail = self.extract_node_text(html_map, 'appfeaturedetail',True)
-        app_data['hasAd'] = int((u'含广告') in appfeaturedetail)
-        app_data['isSecure'] = int((u'安全') in appfeaturedetail)
-        app_data['size'] = self.extract_node_text(html_map, 'Size').lstrip(u'大小:')
-        app_data['currentVersion'] =self.extract_node_text(html_map, 'currentVersion').lstrip(u'版本:')
-        app_data['downTimes'] =self.extract_node_text(html_map, 'downTimes').lstrip(u'下载次数:')
-
-        app_data['score'] = self.extract_node_text(html_map, 'Score').lstrip('width:')
-        app_data['downUrl'] = self.extract_node_text(html_map, 'downUrl')
         app_data['iconUrl'] = self.extract_node_text(html_map, 'iconUrl')
+        app_data['downUrl'] = self.extract_node_text(html_map, 'downUrl')
+        app_data['apkName'] = app_data['downUrl'].split('/')[-1].rstrip('.apk')
+        app_data['appId'] = self.extract_node_text(html_map, 'appId')
+        app_data['Score'] = self.extract_node_text(html_map, 'Score')
+        # app_data['reviewCount'] = self.extract_node_text(html_map, 'reviewCount'):TODO: ALWAYS GOT 0
+        app_data['downTimes'] = self.extract_node_text(html_map, 'downTimes',True)[0].lstrip(u'下载：')
+        app_data['size'] = self.extract_node_text(html_map, 'size',True)[1]
+        infors = self.extract_node_text(html_map, 'infors',True)
+        app_data['isSecure'] = int((u'安全无毒') in infors)
+        app_data['hasAd'] = int((u'有广告') in infors)
+        app_data['hasPaid'] = int((u'免费')not in infors)
+        app_data['numPermissions'] =  int(self.extract_node_text(html_map, 'numPermissions').split('：')[-1])
+        app_data['paidInfo'] = self.extract_node_text(html_map, 'paidInfo')
+
+        app_data['permissions'] = self.extract_node_text(html_map, 'permissions')
 
 
-        app_data['description'] = "\n".join(self.extract_node_text(html_map, 'Description', True))
+        # app_data['category'] = self.extract_node_text(html_map, 'Category',True)[2]
+        app_data['description'] = self.extract_node_text(html_map, 'description', True)
+        if app_data['description']:
+            app_data['description'] = "\n".join(app_data['description'])
+
+        baseinfo = self.extract_node_text(html_map, 'baseinfo', True)
+        app_data['developer'] = baseinfo[0]
+        app_data['lastUpdateDate'] = baseinfo[1]
+        app_data['currentVersion'] = baseinfo[2]
+        app_data['minimumOSVersion'] = baseinfo[3].lstrip('Android ')
+        print app_data['minimumOSVersion']
+        app_data['language'] = baseinfo[4]
+
 
         return app_data
 
