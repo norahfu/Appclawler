@@ -2,28 +2,33 @@
 #coding=utf-8
 __author__ = 'Norah'
 import sys, os
-import time
-import codecs
+import datetime
+
+
+from util.MongoWrapper import MongoDBWrapper
 from extractor.myappParser import MyappParser
 from extractor.sjbaiduParser import SjbaiduParser
 from extractor.zhushou360Parser import Zhushou360Parser
-reload(sys)
-sys.setdefaultencoding('utf-8')
-sys.path.append(u'..')
 
-import urllib
+
 import logging
-from urllib import urlopen
 from util.browserHelper import *
 
 import requests
 import traceback
 from nt import chdir
-from util.mysqlWrapper import getConn, insertRecord, loadRecord, getRecord, sqlExecute
+# from util.mysqlWrapper import getConn, insertRecord, loadRecord, getRecord, sqlExecute
+reload(sys)
+sys.setdefaultencoding('utf-8')
+sys.path.append(u'..')
 class fetcher:
     def __init__(self):
         self._seedsdir = u"../seeds"
         self._logdir = u"../log"
+        self._mongowrapper = MongoDBWrapper()
+        self._mongowrapper.connect('appdb')
+        self._infocolection = 'app_Info'
+        self._seedscolection = 'app_Seeds'
 
         logging.basicConfig(level=logging.DEBUG,
                 format='%(asctime)s %(message)s |---| %(levelname)s  %(filename)s[line:%(lineno)d]',
@@ -51,13 +56,14 @@ class fetcher:
 
         try:
             #real_url = 'http://zhushou.360.cn/detail/index/soft_id/3488793'
+            print "start get page",datetime.datetime.now()
             response = requests.get(url=real_url)    # 最基本的GET请求
             page = response.text
             if not page or response.status_code != requests.codes.ok:
                 self.logger.debug(u"Fetch failed with status code: {}".format(response.status_code))
                 return False
-
-            print real_url
+            print "finish get page",datetime.datetime.now()
+            #print real_url
             # page = load_page(real_url) :TODO 有一些js的数据抓不到
             if 'qq'in suburl_filter:
                 app,sublink = self.fetch_myapp_app(page)
@@ -75,11 +81,14 @@ class fetcher:
                     app[key] = u''
             #app_data = [data or u'' for data in app]
 
-            dimensions = {"url": url.strip(), "domain": suburl_filter}
-            conn = getConn("taierdb")
-            table = "app_Info"
-            loadRecord(app, dimensions, table, conn=conn)
-            conn.close()
+
+            query = {"_id": url.strip(), "domain": suburl_filter}
+            # print "start db info",datetime.datetime.now()
+            # conn = getConn("taierdb")
+
+            self._mongowrapper.find_and_modify(query,app,self._infocolection)
+
+
             self.store_suburls(sublink,url,suburl_filter)
 
             #:TODO: 根据不同的parser解析
@@ -110,8 +119,10 @@ class fetcher:
         return app,related_apps
 
     def fetch_zhushou360_app(self,page):
+        print "start zhushou parser",datetime.datetime.now()
         parser = Zhushou360Parser()
         app = parser.parse_app_data(page)
+        print "stop zhushou parser",datetime.datetime.now()
         ## :TODO:360手机助手的链接是动态生成的，需要重新考虑
         related_apps = []
         # related_apps = parser.parse_guess_like_apps(page)
@@ -121,6 +132,7 @@ class fetcher:
         return app,related_apps
 
     def get_seeds(self):
+
         seedfiles = os.listdir(self._seedsdir)
         for f in seedfiles:
             if not f.endswith(".done"):
@@ -136,27 +148,36 @@ class fetcher:
                 self.logger.debug(u"start idxLine: {}/{}".format(idxLine, numLine))
 
                 ret = False
-                conn = getConn("taierdb")
-                table = 'app_Seeds'
+                # conn = getConn("taierdb")
+                # table = 'app_Seeds'
 
                 try:
 
+                    print "finish parsing txt",datetime.datetime.now()
                     ret = self.get_from_url(url, suburl_filter)
-                    sql = u"""select errorTimes from app_Seeds where url = '{}'""".format(url);
-                    errorTimessql = sqlExecute(sql, conn)
-                    if not errorTimessql:
-                        errorTimes = 0
+                    print "finish paring page",datetime.datetime.now()
+                    query = {'_id':url}
+                    # sql = u"""select errorTimes from app_Seeds where url = '{}'""".format(url);
+                    # errorTimessql = sqlExecute(sql, conn)
+                    errorTimessql = self._mongowrapper.query_one(query,self._seedscolection)
+                    if errorTimessql:
+                        errorTimes = errorTimessql['errorTimes'] or 0
                     else:
-                        errorTimes = sqlExecute(sql, conn)[0][0];
+                        errorTimes=0
+                    # if not errorTimessql[0]['errorTimes']:
+                    #     errorTimes = 0
+                    # else:
+                    #     errorTimes = errorTimessql[0]['errorTimes'];
 
                     if ret:
-                        dimensions = {"url": url.strip(), "domain": suburl_filter}
+                        query = {"_id": url.strip(), "domain": suburl_filter}
                         measures = {"fetchTimes": 1,"errorTimes":errorTimes}
 
                         # sql = u"""update app_Seeds set fetchTimes = 1 where url = '{}'""".format(url);
                     else:
-                        dimensions = {"url": url.strip(), "domain": suburl_filter}
+                        # dimensions = {"url": url.strip(), "domain": suburl_filter}
                         errorTimes += 1
+                        query = {"_id": url.strip(), "domain": suburl_filter}
                         measures = {"fetchTimes": 1,"errorTimes":errorTimes}
                         # sql = u"""update app_Seeds set errorTimes = errorTimes + 1, fetchTimes = 1 where url = '{}'""".format(url);
 
@@ -166,14 +187,17 @@ class fetcher:
                     continue
 
                 try:
-                    loadRecord(measures, dimensions, table, conn=conn)
+
+                    self._mongowrapper.find_and_modify(query,measures,self._seedscolection)
+
                     #sqlExecute(sql, conn);
 
                 except Exception as e:
                     self.logger.warning(str(e))
                     self.logger.warning(traceback.format_exc())
 
-                conn.close()
+                # conn.close()
+                # print "finish db seeds",datetime.datetime.now()
 
             name = self._seedsdir+"/"+real_f+'.fetched'
             chdir(os.path.dirname(self._seedsdir+"/"+real_f))
@@ -182,7 +206,7 @@ class fetcher:
 
 
     def store_suburls(self,suburls, url, suburl_filter):
-        conn = getConn("taierdb")
+        # conn = getConn("taierdb")
 
         numSubLinks  = len(suburls)
         # 如果没有extend的url，直接跳出
@@ -193,32 +217,39 @@ class fetcher:
             return False
 
         suburl_filter = suburl_filter.strip()
-        dimensions = {"parentUrl": url.strip()}
-        table="app_Seeds"
-        numNewSubLinks = numSubLinks - len(getRecord(dimensions, table, conn=conn) or [])
+        query = {"parentUrl": url.strip()}
+
+        # table="app_Seeds"
+        numNewSubLinks = numSubLinks - self._mongowrapper.query_some(query, self._seedscolection).count()
+        # numNewSubLinks = numSubLinks - len(getRecord(dimensions, table, conn=conn) or [])
         numNewSubLinks = (numNewSubLinks >= 0) and numNewSubLinks or 0
 
-        dimensions = {"url": url.strip(), "domain": suburl_filter}
+        dimensions = {"_id": url.strip(), "domain": suburl_filter}
         measures = {"numSubLinks": numSubLinks, "numNewSubLinks": numNewSubLinks}
 
-        loadRecord(measures, dimensions, table, conn=conn)
+        self._mongowrapper.find_and_modify(dimensions, measures,  self._seedscolection)
 
 
         for surl in suburls:
             if not surl:
                 continue
 
-            dimensions = {"url": surl.strip()}
+            dimensions = {"_id": surl.strip()}
             measures = {"errorTimes": 0, "fetchTimes": 0, "parentUrl": url.strip(), "domain": suburl_filter}
+            self._mongowrapper.find_and_modify(dimensions,measures,  self._seedscolection)
 
-            if not getRecord(dimensions, table, conn=conn):
-                insertRecord(measures, dimensions, table, conn=conn)
+            # if not getRecord(dimensions, table, conn=conn):
+            #     insertRecord(measures, dimensions, table, conn=conn)
 
-        conn.close()
+        # conn.close()
         return True
 
 if "__main__" == __name__:
     fetcher = fetcher()
+
+
+
     while True:
+        print "start counting time",datetime.datetime.now()
         fetcher.get_seeds()
         time.sleep(10)

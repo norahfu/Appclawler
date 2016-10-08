@@ -69,6 +69,24 @@ def load_scroll_page(url):
     browser.close()
     return whole_page
 
+def load_page(url):
+    service_args = [
+            '--load-images=no'
+        ]
+    #browser = webdriver.PhantomJS(service_args=service_args)
+    browser = webdriver.Chrome(service_args=service_args)
 
+    browser.set_page_load_timeout(30)
+    try:
+        browser.get(url)
+        print ("crawling %s ......" %url)
+    except Exception as e:
+        print "oops something wrong"
+        #if errors detected. rest for 10minutes
+        time.sleep(600)
+    page = browser.page_source
+
+    browser.close()
+    return page
 
 

@@ -9,7 +9,8 @@ sys.path.append(u'..')
 from extractor.myappParser import MyappParser
 from extractor.sjbaiduParser import SjbaiduParser
 from extractor.zhushou360Parser import Zhushou360Parser
-from util.mysqlWrapper import *
+#from util.mysqlWrapper import *
+from util.MongoWrapper import MongoDBWrapper
 from util.browserHelper import *
 import string
 import urllib
@@ -20,8 +21,12 @@ class Controler():
     def __init__(self):
         self._seeds_num = 100
         self._output_path = '../seeds/'
-        self._db = 'taierdb'
+        self._db = 'appdb'
+        self._confcollection = 'app_Conf'
+        self._seedscolection = 'app_Seeds'
         self.seeds =[]
+        self._mongowrapper = MongoDBWrapper()
+        self._mongowrapper.connect('appdb')
 
     #构造搜索关键字
     def get_keywords(self):
@@ -66,7 +71,6 @@ class Controler():
                         is_pageend = parser.is_pageEnd(page)
 
 
-                #:TODO
             if domain.startswith('http://shouji.baidu.com'):
                 parser = SjbaiduParser()
                 nextpage = 1
@@ -92,15 +96,21 @@ class Controler():
                 if starturl:
                     #检查seeds中是否已经有链接了
                     #TODO: is it neccessary????
-                    inSeeds = False
-                    conn = getConn(self._db)
-                    sql = 'select url from app_Seeds'
-                    url =  sqlExecute(sql, conn)
-                    for each in url:
-                        if starturl in each:
-                            inSeeds = True
-                    if (inSeeds ==False):
-                        seed =[starturl,domain]
+                    # inSeeds = False
+                    query = {'_id': starturl}
+                    inSeeds = self._mongowrapper.query_one(query,self._seedscolection)
+                    # if self._mongowrapper._find(self._seedscoolection)
+                    # conn = getConn(self._db)
+                    # sql = 'select url from app_Seeds'
+                    # url =  sqlExecute(sql, conn)
+                    # for each in url:
+                    #     if starturl in each:
+                    #         inSeeds = True
+                    if (not inSeeds or inSeeds == False):
+                        seed = {}
+                        seed['_id'] = starturl
+                        seed['domain'] = domain
+                        # seed =[starturl,domain]
                         self.seeds.append(seed)
                         if len(self.seeds)>=self._seeds_num:
                             self.output_seeds(self.seeds)
@@ -114,12 +124,13 @@ class Controler():
                 return False
         return True
     #获取待抓取Domain
-    def get_domain(self,conn):
+    def get_domain(self):
         domains_str = []
-        sql = 'select Domain from app_Conf'
-        domains =  sqlExecute(sql, conn)
+        domains = self._mongowrapper._find(self._confcollection)
+        # sql = 'select Domain from app_Conf'
+        # domains =  sqlExecute(sql, conn)
         for domain in domains:
-            domains_str.append(domain[0])
+            domains_str.append(domain['domain'])
         return domains_str
 
     #获取待抓取seeds
@@ -130,14 +141,15 @@ class Controler():
         else:
             print 'controler has no path error'
 
-        conn = getConn(self._db)
-        if conn:
-            domains = self.get_domain(conn)
 
-            for domain in domains:
-                sql = "select URL, Domain from app_Seeds where Domain = '%s' and FetchTimes = 0 limit %d" % (domain, self._seeds_num)
-                seeds =  sqlExecute(sql, conn)
-            self.output_seeds(seeds)
+        domains = self.get_domain()
+        # 按domain逐个抓取
+        for domain in domains:
+            query = {'domain': domain,'FetchTimes':0 }
+            seeds = self._mongowrapper.query_some(query,'app_Seeds',self._seeds_num)
+            # sql = "select URL, Domain from app_Seeds where Domain = '%s' and FetchTimes = 0 limit %d" % (domain, self._seeds_num)
+            # seeds =  sqlExecute(sql, conn)
+        self.output_seeds(seeds)
 
 
     #输出种子文件
@@ -147,8 +159,8 @@ class Controler():
         fd = open(path_file,'w')
         if fd:
             for seed in seeds:
-                url = seed[0]
-                domain = seed[1]
+                url = seed['_id']
+                domain = seed['domain']
                 fd.write('%s\t%s\n' % (url, domain))
             fd.close()
         else:
@@ -168,13 +180,11 @@ class Controler():
         else:
             print 'controler has no path error'
 
-        if self._db:
-            conn = getConn(self._db)
-            if conn:
-                domains = self.get_domain(conn)
-                for keyword in self.get_keywords():
-                    print keyword
-                    self.get_seeds_by_search(keyword,domains)
+        domains = self.get_domain()
+        for keyword in self.get_keywords():
+            print keyword
+            self.get_seeds_by_search(keyword,domains)
+
 
     def main_work(self):
         pass
@@ -182,5 +192,10 @@ class Controler():
 if "__main__" == __name__:
     controler = Controler()
 
-    controler.get_start_seeds()
+    try:
+
+        controler.get_start_seeds()
+    except Exception as e:
+        time.sleep(600)
+        print e
     #controler.get_db_seeds()
