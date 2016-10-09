@@ -160,10 +160,11 @@ class fetcher:
                     # sql = u"""select errorTimes from app_Seeds where url = '{}'""".format(url);
                     # errorTimessql = sqlExecute(sql, conn)
                     errorTimessql = self._mongowrapper.query_one(query,self._seedscolection)
+                    errorTimes=0
                     if errorTimessql:
-                        errorTimes = errorTimessql['errorTimes'] or 0
-                    else:
-                        errorTimes=0
+                        if 'errorTimes'in errorTimessql.keys():
+                            errorTimes = errorTimessql['errorTimes']
+
                     # if not errorTimessql[0]['errorTimes']:
                     #     errorTimes = 0
                     # else:
@@ -189,6 +190,7 @@ class fetcher:
                 try:
 
                     self._mongowrapper.find_and_modify(query,measures,self._seedscolection)
+                    print "addddddddddddda newlink"
 
                     #sqlExecute(sql, conn);
 
@@ -209,6 +211,7 @@ class fetcher:
         # conn = getConn("taierdb")
 
         numSubLinks  = len(suburls)
+        print "addddddddddddddddddddddddsublinkxs",numSubLinks
         # 如果没有extend的url，直接跳出
         if numSubLinks == 0:
             return False

@@ -107,11 +107,10 @@ class SjbaiduParser:
 
         xpath ="//input[@class='total-page']/@value"
         tree = html.fromstring(page)
-        try:
+        if tree.xpath(xpath):
             totalpage = tree.xpath(xpath)[0]
-        except Exception as e:
-            print e
-
+        else:
+            totalpage =1
 
         return totalpage
 
